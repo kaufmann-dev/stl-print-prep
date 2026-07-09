@@ -26,6 +26,7 @@ class Preset:
 
 PRESETS: dict[str, Preset] = {
     "resin": Preset(),
+    "fdm": Preset(close_mm=2.4, dilate_mm=1.2),
 }
 
 

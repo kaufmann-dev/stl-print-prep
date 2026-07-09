@@ -40,6 +40,7 @@ the selected cleanup, keeps the largest component, meshes it, and writes an STL.
 
 | preset  | close mm | dilate mm | target faces | purpose                 |
 | ------- | -------: | --------: | -----------: | ----------------------- |
+| `fdm`   |    `2.4` |     `1.2` |     `600000` | FDM print preparation   |
 | `resin` |    `1.6` |     `0.4` |     `600000` | resin print preparation |
 
 Every preset value can be overridden:
@@ -48,6 +49,7 @@ Every preset value can be overridden:
 skullmesh-prep build \
   --field /home/david/Downloads/skullmerge/field_union_0p4.nrrd \
   --output /home/david/Downloads/custom.stl \
+  --preset fdm \
   --close-mm 1.2 \
   --target-faces 600000
 ```

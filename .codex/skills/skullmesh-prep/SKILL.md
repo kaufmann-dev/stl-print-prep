@@ -1,6 +1,6 @@
 ---
 name: skullmesh-prep
-description: Use when Codex needs to generate, adjust, or validate skull STL files from the merged skull field, including resin-printable variants, pore-closing changes, target-face changes, and smoothing changes. Always use the installed skullmesh-prep CLI instead of creating one-off scripts for these skull mesh preparation tasks.
+description: Use when Codex needs to generate, adjust, or validate skull STL files from the merged skull field, including resin/FDM printable variants, pore-closing changes, target-face changes, and smoothing changes. Always use the installed skullmesh-prep CLI instead of creating one-off scripts for these skull mesh preparation tasks.
 ---
 
 # Skullmesh Prep
@@ -33,6 +33,15 @@ Default resin-prepared STL:
 skullmesh-prep build \
   --field /home/david/Downloads/skullmerge/field_union_0p4.nrrd \
   --output /home/david/Downloads/Skull_full_merged_2_resin_print.stl
+```
+
+FDM-prepared STL:
+
+```sh
+skullmesh-prep build \
+  --field /home/david/Downloads/skullmerge/field_union_0p4.nrrd \
+  --output /home/david/Downloads/Skull_full_merged_2_fdm_print.stl \
+  --preset fdm
 ```
 
 Adjust values with flags rather than making new presets:
