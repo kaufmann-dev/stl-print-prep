@@ -1,10 +1,11 @@
-# skullmesh-prep
+# stl-print-prep
 
-Reusable CLI for making an existing skull STL print-ready.
+Reusable CLI for making an existing STL mesh more print-ready.
 
 The input is always an STL. The tool voxelizes that mesh internally, closes
 pores in millimetres, optionally reinforces thin geometry, remeshes, smooths,
-decimates, and writes a new STL.
+decimates, and writes a new STL. Multi-part meshes are preserved; only connected
+islands smaller than `--min-island-mm3` are removed.
 
 ## Install
 
@@ -15,18 +16,18 @@ make install-local
 Then verify it works from anywhere:
 
 ```sh
-skullmesh-prep doctor
-skullmesh-prep presets
+stl-print-prep doctor
+stl-print-prep presets
 ```
 
 ## Commands
 
 ```sh
-skullmesh-prep doctor
-skullmesh-prep --json doctor
-skullmesh-prep presets
-skullmesh-prep --json presets
-skullmesh-prep build --input skull.stl --output skull-print.stl
+stl-print-prep doctor
+stl-print-prep --json doctor
+stl-print-prep presets
+stl-print-prep --json presets
+stl-print-prep build --input model.stl --output model-print.stl
 ```
 
 ## Presets
@@ -39,9 +40,9 @@ skullmesh-prep build --input skull.stl --output skull-print.stl
 `resin` is the default. Every preset value can be overridden:
 
 ```sh
-skullmesh-prep build \
-  --input /home/david/Downloads/Skull_full_merged_2.stl \
-  --output /home/david/Downloads/custom-print.stl \
+stl-print-prep build \
+  --input /path/to/model.stl \
+  --output /path/to/model-print.stl \
   --preset fdm \
   --close-mm 1.2 \
   --dilate-mm 0.8 \

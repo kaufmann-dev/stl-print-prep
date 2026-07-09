@@ -124,18 +124,20 @@ def radius_voxels(mm: float, voxel_mm: float) -> int:
     return max(1, int(math.ceil(mm / voxel_mm)))
 
 
-def keep_largest(mask: np.ndarray, voxel_mm: float, min_island_mm3: float) -> np.ndarray:
+def remove_small_islands(mask: np.ndarray, voxel_mm: float, min_island_mm3: float) -> np.ndarray:
     labels, count = ndimage.label(mask)
     if count == 0:
         raise ValueError("voxelization produced no solid foreground")
+    if min_island_mm3 <= 0:
+        return mask
     sizes = np.bincount(labels.ravel())
     sizes[0] = 0
-    min_voxels = 0 if min_island_mm3 <= 0 else max(1, int(round(min_island_mm3 / (voxel_mm ** 3))))
-    sizes[sizes < min_voxels] = 0
-    keep = int(np.argmax(sizes))
-    if keep == 0:
+    min_voxels = max(1, int(round(min_island_mm3 / (voxel_mm ** 3))))
+    keep = sizes >= min_voxels
+    keep[0] = False
+    if not keep.any():
         raise ValueError("no connected component survived --min-island-mm3")
-    return labels == keep
+    return keep[labels]
 
 
 def apply_cleanup(mask: np.ndarray, preset: Preset, verbose: bool) -> np.ndarray:
@@ -149,7 +151,7 @@ def apply_cleanup(mask: np.ndarray, preset: Preset, verbose: bool) -> np.ndarray
         log(f"dilate {preset.dilate_mm:.2f} mm -> {dilate_r} voxels", verbose)
         mask = ndimage.binary_dilation(mask, structure=ball(dilate_r))
 
-    mask = keep_largest(mask, preset.voxel_mm, preset.min_island_mm3)
+    mask = remove_small_islands(mask, preset.voxel_mm, preset.min_island_mm3)
     return np.pad(mask, 1, constant_values=False)
 
 
@@ -193,20 +195,12 @@ def smooth(poly: vtk.vtkPolyData, iterations: int, passband: float) -> vtk.vtkPo
     return filt.GetOutput()
 
 
-def largest_component(poly: vtk.vtkPolyData) -> tuple[vtk.vtkPolyData, int]:
+def count_components(poly: vtk.vtkPolyData) -> int:
     conn = vtk.vtkPolyDataConnectivityFilter()
     conn.SetInputData(poly)
     conn.SetExtractionModeToAllRegions()
     conn.Update()
-    regions = conn.GetNumberOfExtractedRegions()
-
-    conn.SetExtractionModeToLargestRegion()
-    conn.Update()
-
-    clean = vtk.vtkCleanPolyData()
-    clean.SetInputConnection(conn.GetOutputPort())
-    clean.Update()
-    return clean.GetOutput(), int(regions)
+    return int(conn.GetNumberOfExtractedRegions())
 
 
 def vtk_arrays(poly: vtk.vtkPolyData) -> tuple[np.ndarray, np.ndarray]:
@@ -302,8 +296,8 @@ def build_mesh(input_path: Path, output: Path, preset: Preset, verbose: bool) ->
     raw = int(poly.GetNumberOfPolys())
     log(f"raw triangles {raw:,}", verbose)
     poly = smooth(poly, preset.smooth_iters, preset.passband)
-    poly, shells = largest_component(poly)
-    log(f"shells {shells} (kept 1) -> {poly.GetNumberOfPolys():,} tris", verbose)
+    shells = count_components(poly)
+    log(f"shells {shells} -> {poly.GetNumberOfPolys():,} tris", verbose)
     poly = decimate(poly, preset.target_faces)
     poly = smooth(poly, preset.post_smooth_iters, preset.passband)
     poly = compute_normals(poly)
@@ -386,7 +380,7 @@ def build_parser() -> argparse.ArgumentParser:
     json_parent = argparse.ArgumentParser(add_help=False)
     json_parent.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
 
-    parser = argparse.ArgumentParser(prog="skullmesh-prep", parents=[json_parent])
+    parser = argparse.ArgumentParser(prog="stl-print-prep", parents=[json_parent])
     sub = parser.add_subparsers(dest="command", required=True)
 
     doctor = sub.add_parser("doctor", help="verify local dependencies", parents=[json_parent])

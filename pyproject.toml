@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "skullmesh-prep"
+name = "stl-print-prep"
 version = "0.1.0"
-description = "Reusable skull mesh preparation CLI for print-ready STL generation"
+description = "Reusable STL mesh preparation CLI for print-ready model generation"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "David Kaufmann" }]
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-skullmesh-prep = "skullmesh_prep.cli:main"
+stl-print-prep = "stl_print_prep.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

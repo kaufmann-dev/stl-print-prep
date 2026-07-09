@@ -1,0 +1,4 @@
+interface:
+  display_name: "STL Print Prep"
+  short_description: "Generate print-ready STL variants."
+  default_prompt: "Use $stl-print-prep to build or adjust a print-ready STL from an existing STL."
