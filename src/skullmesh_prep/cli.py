@@ -3,11 +3,11 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import math
 import sys
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
-import numpy as np
 import SimpleITK as sitk
 
 from dicom_surface import segment, surface
@@ -15,27 +15,17 @@ from dicom_surface import segment, surface
 
 @dataclass(frozen=True)
 class Preset:
-    close_mm: float = 0.0
-    dilate_mm: float = 0.0
+    close_mm: float = 1.6
+    dilate_mm: float = 0.4
     target_faces: int = 600_000
     smooth_iters: int = 20
     post_smooth_iters: int = 25
     passband: float = 0.1
     min_island_mm3: float = 100.0
-    manual_roi: tuple[float, float, float, float, float, float] | None = None
-    manual_close_mm: float = 0.0
 
 
 PRESETS: dict[str, Preset] = {
-    "clean": Preset(),
-    "resin-0p8": Preset(close_mm=0.8, dilate_mm=0.4),
-    "resin-1p6": Preset(close_mm=1.6, dilate_mm=0.4),
-    "manual-orbit-maxilla": Preset(
-        close_mm=1.6,
-        dilate_mm=0.4,
-        manual_roi=(-78.0, 78.0, -252.0, -128.0, -650.0, -515.0),
-        manual_close_mm=4.8,
-    ),
+    "resin": Preset(),
 }
 
 
@@ -53,43 +43,7 @@ def log(message: str, enabled: bool) -> None:
 def radius_voxels(mm: float, image: sitk.Image) -> list[int]:
     if mm <= 0:
         return [0] * image.GetDimension()
-    return [max(1, int(np.ceil(mm / spacing))) for spacing in image.GetSpacing()]
-
-
-def parse_roi(text: str) -> tuple[float, float, float, float, float, float]:
-    try:
-        values = tuple(float(part) for part in text.split(","))
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError("ROI must contain six comma-separated numbers") from exc
-    if len(values) != 6:
-        raise argparse.ArgumentTypeError("ROI must be x_min,x_max,y_min,y_max,z_min,z_max")
-    x0, x1, y0, y1, z0, z1 = values
-    if not (x0 < x1 and y0 < y1 and z0 < z1):
-        raise argparse.ArgumentTypeError("each ROI min must be smaller than its max")
-    return values
-
-
-def roi_mask(image: sitk.Image, roi: tuple[float, float, float, float, float, float]) -> sitk.Image:
-    direction = np.asarray(image.GetDirection(), dtype=np.float64).reshape(3, 3)
-    if not np.allclose(direction, np.eye(3), atol=1e-8):
-        raise ValueError("manual ROI currently requires an axis-aligned field")
-
-    size = np.asarray(image.GetSize(), dtype=int)
-    spacing = np.asarray(image.GetSpacing(), dtype=np.float64)
-    origin = np.asarray(image.GetOrigin(), dtype=np.float64)
-    bounds = ((roi[0], roi[1]), (roi[2], roi[3]), (roi[4], roi[5]))
-    spans: list[tuple[int, int]] = []
-    for axis, (lo_mm, hi_mm) in enumerate(bounds):
-        lo = int(np.floor((lo_mm - origin[axis]) / spacing[axis]))
-        hi = int(np.ceil((hi_mm - origin[axis]) / spacing[axis]))
-        spans.append((max(0, min(int(size[axis]), lo)), max(0, min(int(size[axis]), hi))))
-
-    arr = np.zeros((size[2], size[1], size[0]), dtype=np.uint8)
-    x, y, z = spans
-    arr[z[0]:z[1], y[0]:y[1], x[0]:x[1]] = 1
-    out = sitk.GetImageFromArray(arr)
-    out.CopyInformation(image)
-    return out
+    return [max(1, int(math.ceil(mm / spacing))) for spacing in image.GetSpacing()]
 
 
 def apply_cleanup(mask: sitk.Image, preset: Preset, verbose: bool) -> sitk.Image:
@@ -114,18 +68,6 @@ def apply_cleanup(mask: sitk.Image, preset: Preset, verbose: bool) -> sitk.Image
             foregroundValue=1,
             backgroundValue=0,
         )
-
-    if preset.manual_roi and preset.manual_close_mm > 0:
-        r = radius_voxels(preset.manual_close_mm, mask)
-        log(f"manual close {preset.manual_close_mm:.2f} mm -> {r} voxels", verbose)
-        strong = sitk.BinaryMorphologicalClosing(
-            mask,
-            kernelRadius=r,
-            kernelType=sitk.sitkBall,
-            foregroundValue=1,
-            safeBorder=True,
-        )
-        mask = sitk.Or(mask, sitk.And(strong, roi_mask(mask, preset.manual_roi)))
 
     return mask
 
@@ -195,8 +137,6 @@ def command_build(args: argparse.Namespace) -> int:
         "post_smooth_iters",
         "passband",
         "min_island_mm3",
-        "manual_roi",
-        "manual_close_mm",
     ):
         value = getattr(args, attr)
         if value is not None:
@@ -205,7 +145,13 @@ def command_build(args: argparse.Namespace) -> int:
 
     try:
         field = sitk.ReadImage(str(args.field))
-        mask = sitk.BinaryThreshold(field, 0.5, 1e9, 1, 0)
+        mask = sitk.BinaryThreshold(
+            field,
+            lowerThreshold=0.5,
+            upperThreshold=1e9,
+            insideValue=1,
+            outsideValue=0,
+        )
         mask = sitk.Cast(mask, sitk.sitkUInt8)
         mask = apply_cleanup(mask, preset, verbose=not args.json)
         mask = segment.islands(
@@ -248,7 +194,7 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--field", type=Path, required=True, help="input fractional occupancy NRRD")
     build.add_argument("--output", type=Path, required=True, help="output STL path")
     build.add_argument("--mask-out", type=Path, help="optional cleaned mask output NRRD")
-    build.add_argument("--preset", choices=sorted(PRESETS), default="resin-1p6")
+    build.add_argument("--preset", choices=sorted(PRESETS), default="resin")
     build.add_argument("--close-mm", type=float)
     build.add_argument("--dilate-mm", type=float)
     build.add_argument("--target-faces", type=int)
@@ -256,8 +202,6 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--post-smooth-iters", type=int)
     build.add_argument("--passband", type=float)
     build.add_argument("--min-island-mm3", type=float)
-    build.add_argument("--manual-roi", type=parse_roi)
-    build.add_argument("--manual-close-mm", type=float)
     build.set_defaults(func=command_build)
 
     return parser

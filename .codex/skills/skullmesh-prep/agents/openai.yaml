@@ -1,0 +1,3 @@
+display_name: Skullmesh Prep
+short_description: Generate skull STL variants with the CLI.
+default_prompt: Use skullmesh-prep to build or adjust a skull STL from the merged field.
