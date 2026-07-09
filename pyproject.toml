@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skullmesh-prep"
+version = "0.1.0"
+description = "Reusable skull mesh preparation CLI for merged DICOM-derived masks"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "David Kaufmann" }]
+license = { text = "MIT" }
+dependencies = [
+  "numpy",
+  "SimpleITK",
+]
+
+[project.scripts]
+skullmesh-prep = "skullmesh_prep.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
