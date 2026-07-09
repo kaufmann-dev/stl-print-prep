@@ -1,8 +1,9 @@
 .PHONY: install-local test
 
 install-local:
-	uv pip install --python /home/david/Projects/dicom-surface/.venv/bin/python -e .
-	ln -sf /home/david/Projects/dicom-surface/.venv/bin/skullmesh-prep $(HOME)/.local/bin/skullmesh-prep
+	uv venv --python 3.12 .venv
+	uv pip install --python .venv/bin/python -e .
+	ln -sf $(PWD)/.venv/bin/skullmesh-prep $(HOME)/.local/bin/skullmesh-prep
 
 test:
-	python3 -m unittest discover -s tests
+	.venv/bin/python -m unittest discover -s tests

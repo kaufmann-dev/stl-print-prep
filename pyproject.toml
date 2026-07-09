@@ -5,14 +5,16 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "skullmesh-prep"
 version = "0.1.0"
-description = "Reusable skull mesh preparation CLI for merged DICOM-derived masks"
+description = "Reusable skull mesh preparation CLI for print-ready STL generation"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "David Kaufmann" }]
 license = { text = "MIT" }
 dependencies = [
-  "dicom-surface",
-  "SimpleITK",
+  "numpy",
+  "pymeshlab",
+  "scipy",
+  "vtk",
 ]
 
 [project.scripts]

@@ -3,14 +3,6 @@ import unittest
 from skullmesh_prep.cli import PRESETS, radius_voxels
 
 
-class FakeImage:
-    def GetSpacing(self):
-        return (0.4, 0.4, 0.4)
-
-    def GetDimension(self):
-        return 3
-
-
 class CliTests(unittest.TestCase):
     def test_presets(self):
         self.assertEqual(set(PRESETS), {"resin", "fdm"})
@@ -22,8 +14,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(PRESETS["fdm"].target_faces, 600_000)
 
     def test_radius_voxels(self):
-        self.assertEqual(radius_voxels(0.8, FakeImage()), [2, 2, 2])
-        self.assertEqual(radius_voxels(0.0, FakeImage()), [0, 0, 0])
+        self.assertEqual(radius_voxels(0.8, 0.4), 2)
+        self.assertEqual(radius_voxels(0.0, 0.4), 0)
 
 
 if __name__ == "__main__":

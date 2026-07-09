@@ -1,19 +1,15 @@
 # skullmesh-prep
 
-Reusable CLI for preparing skull STL files from an already merged DICOM-derived
-fractional occupancy field.
+Reusable CLI for making an existing skull STL print-ready.
 
-The tool wraps the local `dicom-surface` meshing pipeline and replaces the
-one-off scripts used during skull merge cleanup.
+The input is always an STL. The tool voxelizes that mesh internally, closes
+pores in millimetres, optionally reinforces thin geometry, remeshes, smooths,
+decimates, and writes a new STL.
 
 ## Install
 
-Install into the same Python environment that has `dicom-surface`, VTK,
-PyMeshLab, and SimpleITK available:
-
 ```sh
-uv pip install --python /home/david/Projects/dicom-surface/.venv/bin/python -e .
-ln -sf /home/david/Projects/dicom-surface/.venv/bin/skullmesh-prep ~/.local/bin/skullmesh-prep
+make install-local
 ```
 
 Then verify it works from anywhere:
@@ -30,27 +26,25 @@ skullmesh-prep doctor
 skullmesh-prep --json doctor
 skullmesh-prep presets
 skullmesh-prep --json presets
-skullmesh-prep build --field field_union_0p4.nrrd --output skull.stl
+skullmesh-prep build --input skull.stl --output skull-print.stl
 ```
-
-`build` reads a fractional occupancy NRRD field, thresholds it at `0.5`, applies
-the selected cleanup, keeps the largest component, meshes it, and writes an STL.
 
 ## Presets
 
-| preset  | close mm | dilate mm | target faces | purpose                 |
-| ------- | -------: | --------: | -----------: | ----------------------- |
-| `fdm`   |    `2.4` |     `1.2` |     `600000` | FDM print preparation   |
-| `resin` |    `1.6` |     `0.4` |     `600000` | resin print preparation |
+| preset  | voxel mm | close mm | dilate mm | target faces | purpose                 |
+| ------- | -------: | -------: | --------: | -----------: | ----------------------- |
+| `fdm`   |    `0.4` |    `2.4` |     `1.2` |     `600000` | FDM print preparation   |
+| `resin` |    `0.4` |    `1.6` |     `0.4` |     `600000` | resin print preparation |
 
-Every preset value can be overridden:
+`resin` is the default. Every preset value can be overridden:
 
 ```sh
 skullmesh-prep build \
-  --field /home/david/Downloads/skullmerge/field_union_0p4.nrrd \
-  --output /home/david/Downloads/custom.stl \
+  --input /home/david/Downloads/Skull_full_merged_2.stl \
+  --output /home/david/Downloads/custom-print.stl \
   --preset fdm \
   --close-mm 1.2 \
+  --dilate-mm 0.8 \
   --target-faces 600000
 ```
 
